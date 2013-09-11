@@ -1,0 +1,19 @@
+\name{logMsg}
+\alias{logMsg}
+\title{Time-stamped message}
+\usage{
+  logMsg(s)
+}
+\arguments{
+  \item{s}{a string}
+}
+\value{
+  None (invisible NULL) as per cat
+}
+\description{
+  Issue a time-stamped, origin-stamped log message.
+}
+\author{
+  Hugh J. Devlin \email{Hugh.Devlin@cityofchicago.org}
+}
+
