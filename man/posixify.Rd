@@ -5,7 +5,7 @@
   posixify(x)
 }
 \arguments{
-  \item{x}{a string in Socrata calendar_date format}
+  \item{x}{char in Socrata calendar_date format}
 }
 \value{
   a POSIX date
