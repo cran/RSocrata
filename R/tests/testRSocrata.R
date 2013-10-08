@@ -1,5 +1,7 @@
 # RUnit tests
 # 
+# resource 4334-bgaj on the Socrata demo site is USGS Earthquakes for 2012-11-01 API School Demo
+#
 # Author: Hugh 2013-07-15
 ###############################################################################
 
@@ -30,26 +32,20 @@ test.posixifyShort <- function() {
 }
 
 test.readSocrataCsv <- function() {
-	df <- read.socrata('http://soda.demo.socrata.com/resource/4tka-6guv.csv')
+	df <- read.socrata('https://soda.demo.socrata.com/resource/4334-bgaj.csv')
 	checkEquals(1007, nrow(df), "rows")
 	checkEquals(9, ncol(df), "columns")
 }
 
-test.readSocrataJson <- function() {
-	df <- read.socrata('http://soda.demo.socrata.com/resource/4tka-6guv.json')
-	checkEquals(1007, nrow(df), "rows")
-	checkEquals(11, ncol(df), "columns")
-}
-
 test.readSoQL <- function() {
-	df <- read.socrata('http://soda.demo.socrata.com/resource/4tka-6guv.csv?$select=region')
+	df <- read.socrata('http://soda.demo.socrata.com/resource/4334-bgaj.csv?$select=region')
 	checkEquals(1007, nrow(df), "rows")
 	checkEquals(1, ncol(df), "columns")
 }
 
 test.readSoQLColumnNotFound <- function() {
 	# SoQL API uses field names, not human names
-	checkException(read.socrata('http://soda.demo.socrata.com/resource/4tka-6guv.csv?$select=Region'))
+	checkException(read.socrata('http://soda.demo.socrata.com/resource/4334-bgaj.csv?$select=Region'))
 }
 
 test.readSocrataNotResource <- function() {
@@ -59,11 +55,12 @@ test.readSocrataNotResource <- function() {
 
 test.readSocrataFormatNotSupported <- function() {
 	# Unsupported data format
-	checkException(read.socrata('http://soda.demo.socrata.com/resource/4tka-6guv.xml'))
+	checkException(read.socrata('http://soda.demo.socrata.com/resource/4334-bgaj.xml'))
+	checkException(read.socrata('http://soda.demo.socrata.com/resource/4334-bgaj.json'))
 }
 
 test.readSocrataCalendarDateLong <- function() {
-	df <- read.socrata('http://soda.demo.socrata.com/resource/4tka-6guv.csv')
+	df <- read.socrata('http://soda.demo.socrata.com/resource/4334-bgaj.csv')
 	dt <- df$Datetime[1] # "2012-09-14 22:38:01"
 	checkEquals("POSIXlt", class(dt)[1], "data type of a date")
 	checkEquals(2012, dt$year + 1900, "year")
