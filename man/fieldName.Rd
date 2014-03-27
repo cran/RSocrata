@@ -2,25 +2,25 @@
 \alias{fieldName}
 \title{Convert Socrata human-readable column name to field name}
 \usage{
-  fieldName(humanName)
+fieldName(humanName)
 }
 \arguments{
   \item{humanName}{a Socrata human-readable column name}
 }
 \value{
-  Socrata field name
+Socrata field name
 }
 \description{
-  Convert Socrata human-readable column name, as it might
-  appear in the first row of data, to field name as it
-  might appear in the HTTP header; that is, lower case,
-  periods replaced with underscores#'
+Convert Socrata human-readable column name, as it might
+appear in the first row of data, to field name as it might
+appear in the HTTP header; that is, lower case, periods
+replaced with underscores#'
 }
 \examples{
 fieldName("Number.of.Stations") # number_of_stations
 }
 \author{
-  Hugh J. Devlin, Ph. D.
-  \email{Hugh.Devlin@cityofchicago.org}
+Hugh J. Devlin, Ph. D.
+\email{Hugh.Devlin@cityofchicago.org}
 }
 

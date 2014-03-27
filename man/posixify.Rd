@@ -2,19 +2,19 @@
 \alias{posixify}
 \title{Convert Socrata calendar_date string to POSIX}
 \usage{
-  posixify(x)
+posixify(x)
 }
 \arguments{
   \item{x}{char in Socrata calendar_date format}
 }
 \value{
-  a POSIX date
+a POSIX date
 }
 \description{
-  Convert Socrata calendar_date string to POSIX
+Convert Socrata calendar_date string to POSIX
 }
 \author{
-  Hugh J. Devlin, Ph. D.
-  \email{Hugh.Devlin@cityofchicago.org}
+Hugh J. Devlin, Ph. D.
+\email{Hugh.Devlin@cityofchicago.org}
 }
 

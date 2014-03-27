@@ -4,7 +4,7 @@
 ###############################################################################
 
 library('httr') # for access to the HTTP header
-library('rjson')
+library('RJSONIO') # for parsing data types from Socrata
 
 #' Time-stamped message
 #'
@@ -14,6 +14,48 @@ library('rjson')
 #' @author Hugh J. Devlin \email{Hugh.Devlin@@cityofchicago.org}
 logMsg <- function(s) {
 	cat(format(Sys.time(), "%Y-%m-%d %H:%M:%OS3 "), as.character(sys.call(-1))[1], ": ", s, '\n', sep='')
+}
+
+#' Checks the validity of the syntax for a potential Socrata dataset Unique Identifier, also known as a 4x4.
+#'
+#' Will check the validity of a potential dataset unique identifier
+#' supported by Socrata. It will provide an exception if the syntax
+#' does not align to Socrata unique identifiers. It only checks for
+#' the validity of the syntax, but does not check if it actually exists.
+#' @param fourByFour a string; character vector of length one
+#' @return TRUE if is valid Socrata unique identifier, FALSE otherwise
+#' @author Tom Schenk Jr \email{tom.schenk@@cityofchicago.org}
+isFourByFour <- function(fourByFour) {
+	fourByFour <- as.character(fourByFour)
+	if(nchar(fourByFour) != 9)
+		return(FALSE)
+	if(regexpr("[[:alnum:]]{4}-[[:alnum:]]{4}", fourByFour) == -1)
+		return(FALSE)
+	TRUE	
+}
+
+#' Convert, if necessary, URL to valid REST API URL supported by Socrata.
+#'
+#' Will convert a human-readable URL to a valid REST API call
+#' supported by Socrata. It will accept a valid API URL if provided
+#' by users and will also convert a human-readable URL to a valid API
+#' URL.
+#' @param url  a string; character vector of length one
+#' @return a valid Url
+#' @author Tom Schenk Jr \email{tom.schenk@@cityofchicago.org}
+validateUrl <- function(url) {
+	url <- as.character(url)
+	parsedUrl <- parse_url(url)
+	if(is.null(parsedUrl$scheme) | is.null(parsedUrl$hostname) | is.null(parsedUrl$path))
+		stop(url, " does not appear to be a valid URL.")
+	if(substr(parsedUrl$path, 1, 9) == 'resource/') {
+		return(build_url(parsedUrl)) # resource url already
+	}
+	fourByFour <- basename(parsedUrl$path)
+	if(!isFourByFour(fourByFour))
+		stop(fourByFour, " is not a valid Socrata dataset unique identifier.")
+	parsedUrl$path <- paste("resource/", fourByFour, ".csv", sep="")
+	build_url(parsedUrl)
 }
 
 #' Convert Socrata human-readable column name to field name
@@ -84,12 +126,12 @@ getContentAsDataFrame <- function(response) {
 	if(sep != -1) mimeType <- substr(mimeType, 0, sep[1] - 1)
 	switch(mimeType,
 		'text/csv' = 
-				read.csv(textConnection(content(response)), stringsAsFactors=FALSE),
+				content(response), # automatic parsing
 		'application/json' = 
 				if(content(response, as='text') == "[ ]") # empty json?
 					data.frame() # empty data frame
 				else
-					data.frame(t(sapply(fromJSON(rawToChar(content(response, as='raw'))), unlist)), stringsAsFactors=FALSE)
+					data.frame(t(sapply(content(response), unlist)), stringsAsFactors=FALSE)
 	) # end switch
 }
 
@@ -110,29 +152,29 @@ getSodaTypes <- function(response) {
 #'
 #' Manages throttling and POSIX date-time conversions
 #'
-#' @param url Socrata Open Data Application Program Interface (SODA) query
+#' @param url A Socrata resource URL, 
+#' or a Socrata "human-friendly" URL, 
+#' or Socrata Open Data Application Program Interface (SODA) query 
 #' requesting a comma-separated download format (.csv suffix), 
-#' which may include SoQL parameters,
+#' May include SoQL parameters, 
 #' but is assumed to not include a SODA offset parameter
 #' @return an R data frame with POSIX dates
 #' @export
 #' @author Hugh J. Devlin, Ph. D. \email{Hugh.Devlin@@cityofchicago.org}
 #' @examples
-#' earthquakes <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.csv")
+#' df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.csv")
 read.socrata <- function(url) {
-	url <- as.character(url)
-	parsedUrl <- parse_url(url)
-	if(substr(parsedUrl$path, 1, 9) != 'resource/')
-		stop("Error in read.socrata: url ", url, " is not a Socrata SoDA resource.")
+	validUrl <- validateUrl(url) # check url syntax, allow human-readable Socrata url
+	parsedUrl <- parse_url(validUrl)
 	mimeType <- guess_media(parsedUrl$path)
-	if(mimeType != 'text/csv')
+	if(!(mimeType %in% c('text/csv','application/json')))
 		stop("Error in read.socrata: ", mimeType, " not a supported data format.")
-	response <- getResponse(url)
+	response <- getResponse(validUrl)
 	page <- getContentAsDataFrame(response)
 	result <- page
 	dataTypes <- getSodaTypes(response)
 	while (nrow(page) > 0) { # more to come maybe?
-		query <- paste(url, if(is.null(parsedUrl$query)) {'?'} else {"&"}, '$offset=', nrow(result), sep='')
+		query <- paste(validUrl, if(is.null(parsedUrl$query)) {'?'} else {"&"}, '$offset=', nrow(result), sep='')
 		response <- getResponse(query)
 		page <- getContentAsDataFrame(response)
 		result <- rbind(result, page) # accumulate

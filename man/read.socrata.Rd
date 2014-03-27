@@ -2,26 +2,27 @@
 \alias{read.socrata}
 \title{Get a full Socrata data set as an R data frame}
 \usage{
-  read.socrata(url)
+read.socrata(url)
 }
 \arguments{
-  \item{url}{Socrata Open Data Application Program
-  Interface (SODA) query requesting a comma-separated
-  download format (.csv suffix), which may include SoQL
-  parameters, but is assumed to not include a SODA offset
-  parameter}
+  \item{url}{A Socrata resource URL, or a Socrata
+  "human-friendly" URL, or Socrata Open Data Application
+  Program Interface (SODA) query requesting a
+  comma-separated download format (.csv suffix), May
+  include SoQL parameters, but is assumed to not include a
+  SODA offset parameter}
 }
 \value{
-  an R data frame with POSIX dates
+an R data frame with POSIX dates
 }
 \description{
-  Manages throttling and POSIX date-time conversions
+Manages throttling and POSIX date-time conversions
 }
 \examples{
-earthquakes <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.csv")
+df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.csv")
 }
 \author{
-  Hugh J. Devlin, Ph. D.
-  \email{Hugh.Devlin@cityofchicago.org}
+Hugh J. Devlin, Ph. D.
+\email{Hugh.Devlin@cityofchicago.org}
 }
 
