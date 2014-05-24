@@ -41,4 +41,6 @@ Please report issues, request enhancements or fork us at the [City of Chicago gi
 
 1.3 Added support for human-readable URL.
 
-1.4 Add json file format for Socrata downloads. Switch to RJSONIO rom rjson. 
+1.4 Add support for json file format for Socrata downloads. Switch from rjson to RJSONIO.
+
+1.5 Switch from RJSONIO to jsonlite. More informative error messages.

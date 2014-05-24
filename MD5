@@ -1,10 +1,9 @@
-244622b8edfc2cb91ee2245cc3bd4113 *DESCRIPTION
+e06bdaafa786f204ebc1cad95c013a00 *DESCRIPTION
 150648e2a636212ac56dd8d4aad7bc0b *LICENSE
-30decf1140d3d56c88dc8b651c882dae *NAMESPACE
-cd2e5e212b0d20d27281f1c88a42e1d0 *R/RSocrata.R
-7bdd96d8a8569f3f25d1d580126fdbe0 *R/tests/testRSocrata.R
-c0332478fad938f2089c64d4ae881bf4 *README.md
+404690182dfcedfc9bfa9ad182d5292a *NAMESPACE
+b961b71053fb8018af31582145bdc092 *R/RSocrata.R
+794715546e9af7c5db366596a3a6f9ae *R/tests/testRSocrata.R
+5258b4c787a3f96527bdfd1ff674b195 *README.md
 cfb8deaf90eb3539c8f4b02d3a646cd1 *man/fieldName.Rd
-1cfec01989529e7ac2593a18c2317cd0 *man/logMsg.Rd
-10d001ded026852eb0c895a1896ce9ed *man/posixify.Rd
-22833e54cbea008d23a2f971111921f4 *man/read.socrata.Rd
+5680af5486da78a4823de57dac8fa787 *man/posixify.Rd
+4984b10d14e22471bacabc7f300a982c *man/read.socrata.Rd

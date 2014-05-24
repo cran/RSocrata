@@ -19,7 +19,7 @@ an R data frame with POSIX dates
 Manages throttling and POSIX date-time conversions
 }
 \examples{
-df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.csv")
+df <- read.socrata("https://soda.demo.socrata.com/resource/4334-bgaj.csv")
 }
 \author{
 Hugh J. Devlin, Ph. D.
