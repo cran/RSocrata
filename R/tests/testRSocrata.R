@@ -59,7 +59,7 @@ test.readSoQLColumnNotFound <- function() {
 }
 
 test.readPrivate <- function() {
-	checkException(read.socrata('http://data.cityofchicago.org/resource/j8vp-2qpg.json'))
+  checkException(read.socrata('http://data.cityofchicago.org/resource/j8vp-2qpg.json'))
 }
 
 test.readSocrataHumanReadable <- function() {
@@ -116,11 +116,81 @@ test.readSocrataInvalidUrl <- function() {
 	checkException(read.socrata("a.fake.url.being.tested"), "invalid url")
 }
 
-test.suite <- defineTestSuite("test Socrata SODA interface",
-		dirs = file.path("R/tests"),
-		testFileRegexp = '^test.*\\.R')
+test.readSocrataToken <- function(){
+  df <- read.socrata('https://soda.demo.socrata.com/resource/4334-bgaj.csv', app_token="ew2rEMuESuzWPqMkyPfOSGJgE")
+  checkEquals(1007, nrow(df), "rows")
+  checkEquals(9, ncol(df), "columns")  
+}
 
-runAllTests <- function() {
+test.readSocrataHumanReadableToken <- function(){
+  df <- read.socrata('https://soda.demo.socrata.com/dataset/USGS-Earthquake-Reports/4334-bgaj', app_token="ew2rEMuESuzWPqMkyPfOSGJgE")
+  checkEquals(1007, nrow(df), "rows")
+  checkEquals(9, ncol(df), "columns")  
+}
+
+test.readAPIConflict <- function(){
+  df <- read.socrata('https://soda.demo.socrata.com/resource/4334-bgaj.csv?$$app_token=ew2rEMuESuzWPqMkyPfOSGJgE', app_token="ew2rEMuESuzWPqMkyPfOSUSER")
+  checkEquals(1007, nrow(df), "rows")
+  checkEquals(9, ncol(df), "columns")
+  # Check that function is calling the API token specified in url
+  checkTrue(substr(validateUrl('https://soda.demo.socrata.com/resource/4334-bgaj.csv?$$app_token=ew2rEMuESuzWPqMkyPfOSGJgE', app_token="ew2rEMuESuzWPqMkyPfOSUSER"), 70, 94)=="ew2rEMuESuzWPqMkyPfOSGJgE")
+}
+
+test.readAPIConflictHumanReadable <- function(){
+  df <- read.socrata('https://soda.demo.socrata.com/dataset/USGS-Earthquake-Reports/4334-bgaj?$$app_token=ew2rEMuESuzWPqMkyPfOSGJgE', app_token="ew2rEMuESuzWPqMkyPfOSUSER")
+  checkEquals(1007, nrow(df), "rows")
+  checkEquals(9, ncol(df), "columns")
+  # Check that function is calling the API token specified in url
+  checkTrue(substr(validateUrl('https://soda.demo.socrata.com/dataset/USGS-Earthquake-Reports/4334-bgaj?$$app_token=ew2rEMuESuzWPqMkyPfOSGJgE', app_token="ew2rEMuESuzWPqMkyPfOSUSER"), 70, 94)=="ew2rEMuESuzWPqMkyPfOSGJgE")
+}
+
+test.incorrectAPIQuery <- function(){
+  # The query below is missing a $ before app_token.
+  checkException(read.socrata("https://soda.demo.socrata.com/resource/4334-bgaj.csv?$app_token=ew2rEMuESuzWPqMkyPfOSGJgE"))
+  # Check that it was only because of missing $  
+  df <- read.socrata("https://soda.demo.socrata.com/resource/4334-bgaj.csv?$$app_token=ew2rEMuESuzWPqMkyPfOSGJgE")
+  checkEquals(1007, nrow(df), "rows")
+  checkEquals(9, ncol(df), "columns") 
+}
+
+test.incorrectAPIQueryHumanReadable <- function(){
+  # The query below is missing a $ before app_token.
+  checkException(read.socrata("https://soda.demo.socrata.com/dataset/USGS-Earthquake-Reports/4334-bgaj?$app_token=ew2rEMuESuzWPqMkyPfOSGJgE"))
+  # Check that it was only because of missing $  
+  df <- read.socrata("https://soda.demo.socrata.com/dataset/USGS-Earthquake-Reports/4334-bgaj?$$app_token=ew2rEMuESuzWPqMkyPfOSGJgE")
+  checkEquals(1007, nrow(df), "rows")
+  checkEquals(9, ncol(df), "columns") 
+}
+
+test.lsSocrata <- function() {
+    # Makes some potentially erroneous assumptions about availability
+    # of soda.demo.socrata.com
+    df <- ls.socrata("https://soda.demo.socrata.com")
+    checkEquals(TRUE, nrow(df) > 0)
+    # Test comparing columns against data.json specifications:
+    # https://project-open-data.cio.gov/v1.1/schema/
+    core_names <- as.character(c("issued", "modified", "keyword", "landingPage", "theme", 
+                                 "title", "accessLevel", "distribution", "description", 
+                                 "identifier", "publisher", "contactPoint", "license"))
+    checkEquals(as.logical(rep(TRUE, length(core_names))), core_names %in% names(df))
+    # Check that all names in data.json are accounted for in ls.socrata return
+    checkEquals(as.logical(rep(TRUE, length(names(df)))), names(df) %in% c(core_names))
+}
+
+test.lsSocrataInvalidURL <- function() {
+    checkException(read.socrata("a.fake.url.being.tested"), "invalid url")
+}
+
+test.suite <- defineTestSuite("test Socrata SODA interface",
+                              dirs = file.path("R/tests"),
+                              testFileRegexp = '^test.*\\.R')
+
+runAllTests <- function() { # Run during development, will complete regardless of errors
 	test.result <- runTestSuite(test.suite)
 	printTextProtocol(test.result) 
+}
+
+runAllTestsCI <- function() { # Ran for continuous integration tests, will stop if error found
+  test.result <- runTestSuite(test.suite)
+  if(getErrors(test.result)$nErr > 0 | getErrors(test.result)$nFail > 0) stop("TEST HAD ERRORS!")
 }

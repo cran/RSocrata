@@ -3,8 +3,9 @@
 # Author: Hugh J. Devlin, Ph. D. 2013-08-28
 ###############################################################################
 
-library('httr') # for access to the HTTP header
-library('jsonlite') # for parsing data types from Socrata
+library('httr')       # for access to the HTTP header
+library('jsonlite')   # for parsing data types from Socrata
+library('mime')       # for guessing mime type
 
 #' Time-stamped message
 #'
@@ -39,23 +40,42 @@ isFourByFour <- function(fourByFour) {
 #' Will convert a human-readable URL to a valid REST API call
 #' supported by Socrata. It will accept a valid API URL if provided
 #' by users and will also convert a human-readable URL to a valid API
-#' URL.
+#' URL. Will accept queries with optional API token as a separate
+#' argument or will also accept API token in the URL query. Will
+#' resolve conflicting API token by deferring to original URL.
 #' @param url  a string; character vector of length one
+#' @param app_token a string; SODA API token used to query the data 
+#' portal \url{http://dev.socrata.com/consumers/getting-started.html}
 #' @return a valid Url
 #' @author Tom Schenk Jr \email{tom.schenk@@cityofchicago.org}
-validateUrl <- function(url) {
+validateUrl <- function(url, app_token) {
 	url <- as.character(url)
-	parsedUrl <- parse_url(url)
+  parsedUrl <- parse_url(url)
 	if(is.null(parsedUrl$scheme) | is.null(parsedUrl$hostname) | is.null(parsedUrl$path))
 		stop(url, " does not appear to be a valid URL.")
-	if(substr(parsedUrl$path, 1, 9) == 'resource/') {
+  if(!is.null(app_token)) { # Handles the addition of API token and resolves invalid uses
+    if(is.null(parsedUrl$query[["$$app_token"]])) {
+      token_inclusion <- "valid_use"
+    } else {
+      token_inclusion <- "already_included" }
+    switch(token_inclusion,
+      "already_included"={ # Token already included in url argument
+        warning(url, " already contains an API token in url. Ignoring user-defined token.")
+      },
+      "valid_use"={ # app_token argument is used, not duplicative.
+        parsedUrl$query[["app_token"]] <- as.character(paste("%24%24app_token=", app_token, sep=""))
+      })
+  } 
+  if(substr(parsedUrl$path, 1, 9) == 'resource/') {
 		return(build_url(parsedUrl)) # resource url already
 	}
 	fourByFour <- basename(parsedUrl$path)
-	if(!isFourByFour(fourByFour))
+  if(!isFourByFour(fourByFour))
 		stop(fourByFour, " is not a valid Socrata dataset unique identifier.")
-	parsedUrl$path <- paste("resource/", fourByFour, ".csv", sep="")
-	build_url(parsedUrl)
+  else {
+    parsedUrl$path <- paste('resource/', fourByFour, '.csv', sep="")
+	  build_url(parsedUrl) 
+  }
 }
 
 #' Convert Socrata human-readable column name to field name
@@ -82,11 +102,12 @@ fieldName <- function(humanName) {
 #' @author Hugh J. Devlin, Ph. D. \email{Hugh.Devlin@@cityofchicago.org}
 posixify <- function(x) {
 	x <- as.character(x)
+	if (length(x)==0) return(x)
 	# Two calendar date formats supplied by Socrata
 	if(any(regexpr("^[[:digit:]]{1,2}/[[:digit:]]{1,2}/[[:digit:]]{4}$", x[1])[1] == 1))
-		strptime(x, format="%m/%d/%Y") # short date format
+	  strptime(x, format="%m/%d/%Y") # short date format
 	else
-		strptime(x, format="%m/%d/%Y %I:%M:%S %p") # long date-time format
+	  strptime(x, format="%m/%d/%Y %I:%M:%S %p") # long date-time format 
 }
 
 # Wrap httr GET in some diagnostics
@@ -158,15 +179,17 @@ getSodaTypes <- function(response) {
 #' requesting a comma-separated download format (.csv suffix), 
 #' May include SoQL parameters, 
 #' but is assumed to not include a SODA offset parameter
+#' @param app_token a string; SODA API token used to query the data 
+#' portal \url{http://dev.socrata.com/consumers/getting-started.html}
 #' @return an R data frame with POSIX dates
 #' @export
 #' @author Hugh J. Devlin, Ph. D. \email{Hugh.Devlin@@cityofchicago.org}
 #' @examples
-#' df <- read.socrata("https://soda.demo.socrata.com/resource/4334-bgaj.csv")
-read.socrata <- function(url) {
-	validUrl <- validateUrl(url) # check url syntax, allow human-readable Socrata url
+#' df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.csv")
+read.socrata <- function(url, app_token = NULL) {
+	validUrl <- validateUrl(url, app_token) # check url syntax, allow human-readable Socrata url
 	parsedUrl <- parse_url(validUrl)
-	mimeType <- guess_media(parsedUrl$path)
+	mimeType <- guess_type(parsedUrl$path)
 	if(!(mimeType %in% c('text/csv','application/json')))
 		stop("Error in read.socrata: ", mimeType, " not a supported data format.")
 	response <- getResponse(validUrl)
@@ -184,4 +207,27 @@ read.socrata <- function(url) {
 		result[[columnName]] <- posixify(result[[columnName]])
 	}
 	result
+}
+
+#' List datasets available from a Socrata domain
+#'
+#' @param url A Socrata URL. This simply points to the site root. 
+#' @return an R data frame containing a listing of datasets along with
+#' various metadata.
+#' @export
+#' @author Peter Schmiedeskamp \email{pschmied@@uw.edu}
+#' @examples
+#' df <- ls.socrata("http://soda.demo.socrata.com")
+ls.socrata <- function(url) {
+    url <- as.character(url)
+    parsedUrl <- parse_url(url)
+    if(is.null(parsedUrl$scheme) | is.null(parsedUrl$hostname))
+        stop(url, " does not appear to be a valid URL.")
+    parsedUrl$path <- "data.json"
+    df <- fromJSON(build_url(parsedUrl))
+    df <- as.data.frame(df$dataset)
+    df$issued <- as.POSIXct(df$issued)
+    df$modified <- as.POSIXct(df$modified)
+    df$theme <- as.character(df$theme)
+    df
 }
