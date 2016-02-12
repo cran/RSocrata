@@ -114,17 +114,36 @@ posixify <- function(x) {
 	  strptime(x, format="%m/%d/%Y %I:%M:%S %p") # long date-time format 
 }
 
+#' Convert Socrata money fields to numeric
+#' 
+#' @param x - a factor of Money fields
+#' @return a number
+#' @author Tom Schenk Jr \email{tom.schenk@@cityofchicago.org}
+#' @noRd
+no_deniro <- function(x) {
+  x <- sub("\\$", "", x)
+  x <- as.numeric(x)
+}
+
 #' Wrap httr GET in some diagnostics
 #' 
 #' In case of failure, report error details from Socrata
 #' 
 #' @param url - Socrata Open Data Application Program Interface (SODA) query
+#' @param email - Optional. The email to the Socrata account with read access to the dataset.
+#' @param password - Optional. The password associated with the email to the Socrata account
 #' @return httr response object
 #' @importFrom httr http_status GET content stop_for_status
 #' @author Hugh J. Devlin, Ph. D. \email{Hugh.Devlin@@cityofchicago.org}
 #' @noRd
-getResponse <- function(url) {
-	response <- httr::GET(url)
+getResponse <- function(url, email = NULL, password = NULL) {
+	
+	if(is.null(email) && is.null(password)){
+		response <- httr::GET(url)
+	} else { # email and password are not NULL
+		response <- httr::GET(url, httr::authenticate(email, password))
+	}
+
 	# status <- httr::http_status(response)
 	if(response$status_code != 200) {
 		msg <- paste("Error in httr GET:", response$status_code, response$headers$statusmessage, url)
@@ -144,6 +163,7 @@ getResponse <- function(url) {
 #'
 #' @author Hugh J. Devlin \email{Hugh.Devlin@@cityofchicago.org}
 #' @importFrom httr content
+#' @importFrom utils read.csv
 #' @param response - an httr response object
 #' @return data frame, possibly empty
 #' @noRd
@@ -155,7 +175,7 @@ getContentAsDataFrame <- function(response) {
 	if(sep != -1) mimeType <- substr(mimeType, 0, sep[1] - 1)
 	switch(mimeType,
 		'text/csv' = 
-				content(response), # automatic parsing
+				read.csv( textConnection(content(response, as="text", type="text/csv", encoding="utf-8")) ), # automatic parsing
 		'application/json' = 
 				if(content(response, as='text') == "[ ]") # empty json?
 					data.frame() # empty data frame
@@ -191,26 +211,42 @@ getSodaTypes <- function(response) {
 #' but is assumed to not include a SODA offset parameter
 #' @param app_token - a string; SODA API token used to query the data 
 #' portal \url{http://dev.socrata.com/consumers/getting-started.html}
+#' @param email - Optional. The email to the Socrata account with read access to the dataset
+#' @param password - Optional. The password associated with the email to the Socrata account
 #' @return an R data frame with POSIX dates
 #' @author Hugh J. Devlin, Ph. D. \email{Hugh.Devlin@@cityofchicago.org}
 #' @examples
+#' # Human-readable URL:
+#' url <- "https://soda.demo.socrata.com/dataset/USGS-Earthquakes-for-2012-11-01-API/4334-bgaj"
+#' df <- read.socrata(url)
+#' # SoDA URL:
 #' df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.csv")
+#' # Download private dataset
+#' socrataEmail <- Sys.getenv("SOCRATA_EMAIL", "mark.silverberg+soda.demo@@socrata.com")
+#' socrataPassword <- Sys.getenv("SOCRATA_PASSWORD", "7vFDsGFDUG")
+#' privateResourceToReadCsvUrl <- "https://soda.demo.socrata.com/resource/a9g2-feh2.csv" # dataset
+#' read.socrata(url = privateResourceToReadCsvUrl, email = socrataEmail, password = socrataPassword)
+#' # Using an API key to read datasets (reduces throttling)
+#' token <- "ew2rEMuESuzWPqMkyPfOSGJgE"
+#' df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.csv", 
+#'                    app_token = token)
+#' nrow(df)
 #' @importFrom httr parse_url build_url
 #' @importFrom mime guess_type
 #' @export
-read.socrata <- function(url, app_token = NULL) {
+read.socrata <- function(url, app_token = NULL, email = NULL, password = NULL) {
 	validUrl <- validateUrl(url, app_token) # check url syntax, allow human-readable Socrata url
 	parsedUrl <- httr::parse_url(validUrl)
 	mimeType <- mime::guess_type(parsedUrl$path)
 	if(!(mimeType %in% c('text/csv','application/json')))
 		stop("Error in read.socrata: ", mimeType, " not a supported data format.")
-	response <- getResponse(validUrl)
+	response <- getResponse(validUrl, email, password)
 	page <- getContentAsDataFrame(response)
 	result <- page
 	dataTypes <- getSodaTypes(response)
 	while (nrow(page) > 0) { # more to come maybe?
 		query <- paste(validUrl, if(is.null(parsedUrl$query)) {'?'} else {"&"}, '$offset=', nrow(result), sep='')
-		response <- getResponse(query)
+		response <- getResponse(query, email, password)
 		page <- getContentAsDataFrame(response)
 		result <- rbind(result, page) # accumulate
 	}	
@@ -218,6 +254,9 @@ read.socrata <- function(url, app_token = NULL) {
 	for(columnName in colnames(page)[!is.na(dataTypes[fieldName(colnames(page))]) & dataTypes[fieldName(colnames(page))] == 'calendar_date']) {
 		result[[columnName]] <- posixify(result[[columnName]])
 	}
+  for(columnName in colnames(page)[!is.na(dataTypes[fieldName(colnames(page))]) & dataTypes[fieldName(colnames(page))] == 'money']) {
+    result[[columnName]] <- no_deniro(result[[columnName]])
+  }
 	return(result)
 }
 
@@ -245,3 +284,86 @@ ls.socrata <- function(url) {
     df$theme <- as.character(df$theme)
     return(df)
 }
+
+
+#' Wrap httr PUT/POST in some diagnostics
+#' 
+#' In case of failure, report error details from Socrata.
+#' 
+#' @param url - Socrata Open Data Application Program Interface (SODA) endpoint (JSON only for now)
+#' @param json_data_to_upload - JSON encoded data to update your SODA endpoint with
+#' @param http_verb - PUT or POST depending on update mode
+#' @param email - email associated with Socrata account (will need write access to dataset)
+#' @param password - password associated with Socrata account (will need write access to dataset)
+#' @param app_token - optional app_token associated with Socrata account
+#' @return httr a response object
+#' @importFrom httr GET
+#' 
+#' @noRd
+checkUpdateResponse <- function(json_data_to_upload, url, http_verb, email, password, app_token = NULL) {
+  if(http_verb == "POST"){
+    response <- httr::POST(url,
+      body = json_data_to_upload,
+      httr::authenticate(email, password),
+      httr::add_headers("X-App-Token" = app_token,
+                  "Content-Type" = "application/json")) #, verbose())
+  } else if(http_verb == "PUT"){
+    response <- httr::PUT(url,
+      body = json_data_to_upload,
+      httr::authenticate(email, password),
+      httr::add_headers("X-App-Token" = app_token,
+                  "Content-Type" = "application/json")) # , verbose())
+  }
+    
+  return(response)
+}
+
+#' Write to a Socrata dataset (full replace or upsert)
+#'
+#' @description Method for updating Socrata datasets 
+#'
+#' @param dataframe - dataframe to upload to Socrata
+#' @param dataset_json_endpoint - Socrata Open Data Application Program Interface (SODA) endpoint (JSON only for now)
+#' @param update_mode - "UPSERT" or "REPLACE"; consult http://dev.socrata.com/publishers/getting-started.html 
+#' @param email - The email to the Socrata account with read access to the dataset
+#' @param password - The password associated with the email to the Socrata account
+#' @param app_token - a (non-required) string; SODA API token can be used to query the data 
+#' portal \url{http://dev.socrata.com/consumers/getting-started.html}
+#' @author Mark Silverberg \email{mark.silverberg@@socrata.com}
+#' @importFrom httr parse_url build_url
+#' @examples
+#' # Store user email and password
+#' socrataEmail <- Sys.getenv("SOCRATA_EMAIL", "mark.silverberg+soda.demo@@socrata.com")
+#' socrataPassword <- Sys.getenv("SOCRATA_PASSWORD", "7vFDsGFDUG")
+#' 
+#' datasetToAddToUrl <- "https://soda.demo.socrata.com/resource/xh6g-yugi.json" # dataset
+#' 
+#' # Generate some data
+#' x <- sample(-1000:1000, 1)
+#' y <- sample(-1000:1000, 1)
+#' df_in <- data.frame(x,y)
+#' 
+#' # Upload to Socrata
+#' write.socrata(df_in,datasetToAddToUrl,"UPSERT",socrataEmail,socrataPassword)
+#' @export
+write.socrata <- function(dataframe, dataset_json_endpoint, update_mode, email, password, app_token = NULL) {
+  
+  # translate update_mode to http_verbs
+  if(update_mode == "UPSERT"){
+    http_verb <- "POST"
+  } else if(update_mode == "REPLACE") {
+    http_verb <- "PUT"
+  } else {
+    stop("update_mode must be UPSERT or REPLACE")
+  }
+
+  # convert dataframe to JSON
+  dataframe_as_json_string <- jsonlite::toJSON(dataframe)
+
+  # do the actual upload
+  response <- checkUpdateResponse(dataframe_as_json_string, dataset_json_endpoint, http_verb, email, password, app_token)
+  
+  return(response)
+
+}
+
