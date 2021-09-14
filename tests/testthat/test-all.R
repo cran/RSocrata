@@ -14,7 +14,7 @@ socrataPassword <- Sys.getenv("SOCRATA_PASSWORD", "7vFDsGFDUG")
 context("posixify function")
 
 test_that("read Socrata CSV is compatible with posixify", {
-  df <- read.socrata('http://soda.demo.socrata.com/resource/4334-bgaj.csv')
+  df <- read.socrata('https://soda.demo.socrata.com/resource/4334-bgaj.csv')
   dt <- posixify("09/14/2012 10:38:01 PM")
   expect_equal(dt, df$datetime[1])  ## Check that download matches test
 })
@@ -57,7 +57,7 @@ test_that("posixify returns Short format", {
 context("Socrata Calendar")
 
 test_that("Calendar Date Short", {
-  df <- read.socrata('http://data.cityofchicago.org/resource/y93d-d9e3.csv?$order=debarment_date')
+  df <- read.socrata('https://data.cityofchicago.org/resource/y93d-d9e3.csv?$order=debarment_date')
   dt <- df$debarment_date[1] # "05/21/1981"
   expect_equal("POSIXct", class(dt)[1], label="data type of a date")
   expect_equal("81", format(dt, "%y"), label="year")
@@ -71,7 +71,7 @@ test_that("Calendar Date Short", {
 test_that("Date is not entirely NA if the first record is bad (issue 68)", {
   
   ## Define and test issue 68
-  # df <- read.socrata('http://data.cityofchicago.org/resource/me59-5fac.csv')
+  # df <- read.socrata('https://data.cityofchicago.org/resource/me59-5fac.csv')
   # expect_false(object = all(is.na(df$Creation.Date)),
   #              "Testing issue 68 https://github.com/Chicago/RSocrata/issues/68")
   
@@ -130,12 +130,16 @@ test_that("read Socrata CSV from New Backend (NBE) endpoint", {
 
 test_that("Warn instead of fail if X-SODA2-* headers are missing", {
   
+  ## Note: The examples with missing Soda2 headers are missing and need to be replaced
+  ## or the issue should be fixed with Socrata / Tyler.
+  ## See issue 196
+  
   ## These data sets are identified in #118 as data sets with missing soda 
   ## headers. The missing header should cause the data set to return character 
   ## columns instead of columns cast into their appropriate classes.
   ## RSocrata should also warn the user when the header is missing.
-  url_csv_missing <- "https://data.healthcare.gov/resource/enx3-h2qp.csv?$limit=1000"
-  url_json_missing <- "https://data.healthcare.gov/resource/enx3-h2qp.json?$limit=1000"
+  # url_csv_missing <- "https://data.healthcare.gov/resource/enx3-h2qp.csv?$limit=1000"
+  # url_json_missing <- "https://data.healthcare.gov/resource/enx3-h2qp.json?$limit=1000"
   ## These URLs should have soda types in the header
   url_csv_complete <- "https://odn.data.socrata.com/resource/pvug-y23y.csv"
   url_json_complete <- "https://odn.data.socrata.com/resource/pvug-y23y.json"
@@ -143,13 +147,13 @@ test_that("Warn instead of fail if X-SODA2-* headers are missing", {
   msg <- "https://github.com/Chicago/RSocrata/issues/118"
   
   ## Check that the soda2 headers are missing
-  expect_null(RSocrata:::getResponse(url_csv_missing)$headers[['x-soda2-types']], info=msg)
-  expect_null(RSocrata:::getResponse(url_json_missing)$headers[['x-soda2-types']], info=msg)
-  
+  # expect_null(RSocrata:::getResponse(url_csv_missing)$headers[['x-soda2-types']], info=msg)
+  # expect_null(RSocrata:::getResponse(url_json_missing)$headers[['x-soda2-types']], info=msg)
+  # 
   ## Check for warning that the header is missing, which causes the column 
   ## classes to be returned as character
-  expect_warning(dfCsv <- read.socrata(url_csv_missing), info=msg)
-  expect_warning(dfJson <- read.socrata(url_json_missing), info=msg)
+  # expect_warning(dfCsv <- read.socrata(url_csv_missing), info=msg)
+  # expect_warning(dfJson <- read.socrata(url_json_missing), info=msg)
   
   ## Check that the soda2 headers are present
   expect_false(is.null(RSocrata:::getResponse(url_csv_complete)$headers[['x-soda2-types']]), info=msg)
@@ -224,13 +228,13 @@ test_that("read Socrata No Scheme", {
 })
 
 test_that("readSoQL", {
-  df <- read.socrata('http://soda.demo.socrata.com/resource/4334-bgaj.csv?$select=region')
+  df <- read.socrata('https://soda.demo.socrata.com/resource/4334-bgaj.csv?$select=region')
   expect_equal(1007, nrow(df), label="rows")
   expect_equal(1, ncol(df), label="columns")
 })
 
 test_that("URL is private (Unauthorized) (will fail)", {
-  expect_error(read.socrata('http://data.cityofchicago.org/resource/j8vp-2qpg.json'))
+  expect_error(read.socrata('https://data.cityofchicago.org/resource/j8vp-2qpg.json'))
 })
 
 test_that("readSocrataHumanReadable", {
@@ -264,7 +268,7 @@ test_that("Read URL provided by data.json from ls.socrata() - JSON", {
 
 test_that("format is not supported", {
   # Unsupported data formats
-  expect_error(read.socrata('http://soda.demo.socrata.com/resource/4334-bgaj.xml'))
+  expect_error(read.socrata('https://soda.demo.socrata.com/resource/4334-bgaj.xml'))
 })
 
 test_that("read Socrata JSON with missing fields (issue 19 - bind within page)", {
@@ -286,16 +290,16 @@ test_that("read Socrata JSON with missing fields (issue 19 - binding pages toget
 
 test_that("Accept a URL with a $limit= clause and properly limit the results", {
   ## Define and test issue 83
-  df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.json?$LIMIT=500") # uppercase
+  df <- read.socrata("https://soda.demo.socrata.com/resource/4334-bgaj.json?$LIMIT=500") # uppercase
   expect_equal(500, nrow(df), label="rows", 
                info = "$LIMIT in uppercase https://github.com/Chicago/RSocrata/issues/83")
-  df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.json?$limit=500") # lowercase
+  df <- read.socrata("https://soda.demo.socrata.com/resource/4334-bgaj.json?$limit=500") # lowercase
   expect_equal(500, nrow(df), label="rows", 
                info = "$limit in lowercase https://github.com/Chicago/RSocrata/issues/83")
-  df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.json?$LIMIT=1001&$order=:id") # uppercase
+  df <- read.socrata("https://soda.demo.socrata.com/resource/4334-bgaj.json?$LIMIT=1001&$order=:id") # uppercase
   expect_equal(1001, nrow(df), label="rows", 
                info = "$LIMIT in uppercase with 2 queries https://github.com/Chicago/RSocrata/issues/83")
-  df <- read.socrata("http://soda.demo.socrata.com/resource/4334-bgaj.json?$limit=1001&$order=:id") # lowercase
+  df <- read.socrata("https://soda.demo.socrata.com/resource/4334-bgaj.json?$limit=1001&$order=:id") # lowercase
   expect_equal(1001, nrow(df), label="rows lowercase", 
                info = "$LIMIT in lowercase with 2 queries https://github.com/Chicago/RSocrata/issues/83")
 })
