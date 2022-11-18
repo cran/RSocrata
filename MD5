@@ -1,8 +1,8 @@
-938ec74b8b512dc1d3c11a2149cff274 *DESCRIPTION
+d9846004988a65c5623b3b417e691378 *DESCRIPTION
 4556c4c34631b7bbb01a38641f6550ca *LICENSE
 0231d4c8995da639e0595e1eff9d28d7 *NAMESPACE
 ac1bd0c410295ede718f536a076c58c4 *R/RSocrata.R
-d1e962abee835e5b7c67de8d40e5f61a *README.md
+87492e1ef59eb4fd4b0c0edd8e02d954 *README.md
 4f75388dbbc7119237c480bb2cca534d *man/fieldName.Rd
 337638c975c6007cbbd460d1154cbf04 *man/isFourByFour.Rd
 7dc6f2d636390165bdc624032d2f236c *man/ls.socrata.Rd
@@ -11,4 +11,4 @@ d1e962abee835e5b7c67de8d40e5f61a *README.md
 6ee1b55491253fd52949f4d5d6b07aaa *man/validateUrl.Rd
 1d9ca4ae1e84bdb55a7862e961b87c57 *man/write.socrata.Rd
 82f6e03bb10d51b0dd7a3337b54540fd *tests/testthat.R
-56a75718e27a70f90c1ba771524bc32e *tests/testthat/test-all.R
+366454ec4876c54d8eb6d33409bd4810 *tests/testthat/test-all.R
